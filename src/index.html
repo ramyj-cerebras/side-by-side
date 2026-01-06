@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Provider Comparison</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            padding: 1.5rem;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+
+        .nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav a {
+            color: #ecf0f1;
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .nav a:hover, .nav a.active {
+            background: #34495e;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .comparison-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .provider-selectors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .provider-selector {
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .provider-selector h3 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .prompt-section {
+            margin-bottom: 2rem;
+        }
+
+        .prompt-section h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #7f8c8d;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .responses {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .response-panel {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .completion-badge {
+            background: #28a745;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .response-panel.completed {
+            border: 2px solid #28a745;
+            background: #f8fff9;
+        }
+
+        .response-panel.completed .response-header {
+            border-bottom-color: #28a745;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .response-title {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .response-stats {
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .response-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .streaming {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .providers-page {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .provider-form {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .provider-list {
+            margin-top: 2rem;
+        }
+
+        .provider-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .provider-info h4 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+
+        .provider-info p {
+            font-size: 0.875rem;
+            color: #666;
+            margin: 0.25rem 0;
+        }
+
+        .provider-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <h1>LLM Provider Comparison</h1>
+        <nav class="nav">
+            <a href="#" class="nav-link active" data-page="comparison">Comparison</a>
+            <a href="#" class="nav-link" data-page="providers">Providers</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Comparison Page -->
+            <div id="comparison-page" class="page active">
+                <div class="comparison-section">
+                    <div class="provider-selectors">
+                        <div class="provider-selector">
+                            <h3>Provider 1</h3>
+                            <select id="provider1-select">
+                                <option value="">Select a provider</option>
+                            </select>
+                        </div>
+                        <div class="provider-selector">
+                            <h3>Provider 2</h3>
+                            <select id="provider2-select">
+                                <option value="">Select a provider</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="compare-btn" class="btn-primary">Compare Responses</button>
+                        <button id="clear-btn" class="btn-secondary">Clear</button>
+                    </div>
+
+                    <div class="prompt-section">
+                        <h3>Enter your prompt</h3>
+                        <textarea id="prompt-input" placeholder="Enter your prompt here..."></textarea>
+                    </div>
+
+                    <div class="responses" id="responses">
+                        <div class="response-panel">
+                            <div class="response-header">
+                                <span class="response-title" id="provider1-title">Provider 1</span>
+                                <span class="response-stats" id="provider1-stats"></span>
+                            </div>
+                            <div class="response-content" id="provider1-response"></div>
+                        </div>
+                        <div class="response-panel">
+                            <div class="response-header">
+                                <span class="response-title" id="provider2-title">Provider 2</span>
+                                <span class="response-stats" id="provider2-stats"></span>
+                            </div>
+                            <div class="response-content" id="provider2-response"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Providers Page -->
+            <div id="providers-page" class="page">
+                <div class="providers-page">
+                    <h2>Manage Providers</h2>
+                    
+                    <div class="provider-form">
+                        <h3>Add New Provider</h3>
+                        <form id="provider-form">
+                            <div class="form-group">
+                                <label for="provider-name">Name</label>
+                                <input type="text" id="provider-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="provider-base-url">Base URL</label>
+                                <input type="text" id="provider-base-url" placeholder="https://api.example.com/v1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="provider-api-key">API Key</label>
+                                <input type="password" id="provider-api-key" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="provider-model">Model</label>
+                                <input type="text" id="provider-model" placeholder="gpt-3.5-turbo" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Add Provider</button>
+                        </form>
+                    </div>
+
+                    <div class="provider-list">
+                        <h3>Configured Providers</h3>
+                        <div id="provider-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="bundle.js"></script>
+</body>
+</html>
