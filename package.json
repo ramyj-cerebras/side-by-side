@@ -5,9 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:simple": "node server-simple.js",
     "dev": "nodemon server.js",
     "build": "npm run build:client",
     "build:client": "webpack --mode production",
+    "build:simple": "webpack --config webpack-simple.config.js",
     "dev:client": "webpack serve --mode development"
   },
   "dependencies": {

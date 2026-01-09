@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const WebSocket = require('ws');
@@ -17,25 +20,18 @@ app.use(express.static(path.join(__dirname, 'dist-simple')));
 // Hardcoded providers - no authentication needed
 const PROVIDERS = [
   {
-    id: 'openai',
-    name: 'OpenAI GPT-3.5',
-    baseUrl: 'https://api.openai.com/v1',
-    apiKey: process.env.OPENAI_API_KEY || 'your-openai-key-here',
-    model: 'gpt-3.5-turbo'
-  },
-  {
-    id: 'anthropic',
-    name: 'Anthropic Claude',
-    baseUrl: 'https://api.anthropic.com/v1',
-    apiKey: process.env.ANTHROPIC_API_KEY || 'your-anthropic-key-here',
-    model: 'claude-3-haiku-20240307'
+    id: 'HF - Fireworks - gpt-oss-120b',
+    name: 'HuggingFace - Fireworks - gpt-oss-120b',
+    baseUrl: 'https://router.huggingface.co/v1',
+    apiKey: process.env.HF_token || 'your-openai-key-here',
+    model: 'openai/gpt-oss-120b:fireworks-ai'
   },
   {
     id: 'cerebras',
-    name: 'Cerebras Llama',
+    name: 'Cerebras gpt-oss-120b',
     baseUrl: 'https://api.cerebras.ai/v1',
     apiKey: process.env.CEREBRAS_API_KEY || 'your-cerebras-key-here',
-    model: 'llama3.1-8b'
+    model: 'gpt-oss-120b'
   }
 ];
 
