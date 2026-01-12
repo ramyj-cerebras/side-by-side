@@ -1,10 +1,12 @@
+// Load environment variables from .env file
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const WebSocket = require('ws');
 const http = require('http');
 const OpenAI = require('openai');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,113 +15,43 @@ const wss = new WebSocket.Server({ server });
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'dist')));
+app.use(express.static(path.join(__dirname, 'dist-simple')));
 
-// Provider configuration storage
-const PROVIDERS_FILE = path.join(__dirname, 'providers.json');
-
-// Load providers from file or create default
-function loadProviders() {
-  if (fs.existsSync(PROVIDERS_FILE)) {
-    return JSON.parse(fs.readFileSync(PROVIDERS_FILE, 'utf8'));
+// Hardcoded providers - no authentication needed
+const PROVIDERS = [
+  {
+    id: 'HF - Fireworks - gpt-oss-120b',
+    name: 'HuggingFace - Fireworks - gpt-oss-120b',
+    baseUrl: 'https://router.huggingface.co/v1',
+    apiKey: process.env.HF_token || 'your-openai-key-here',
+    model: 'openai/gpt-oss-120b:fireworks-ai'
+  },
+  {
+    id: 'cerebras',
+    name: 'Cerebras gpt-oss-120b',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    apiKey: process.env.CEREBRAS_API_KEY || 'your-cerebras-key-here',
+    model: 'gpt-oss-120b'
+  },
+    {
+    id: 'FW API - gpt-oss-120b',
+    name: 'Fireworks API - gpt-oss-120b',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    apiKey: process.env.FW_API_KEY || 'your-fireworks-key-here',
+    model: 'accounts/fireworks/models/gpt-oss-120b'
+  },
+  {
+    id: 'Gemini API',
+    name: 'Gemini API - gemini flash',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    apiKey: process.env.GEMINI_API_KEY || 'your-gemini-key-here',
+    model: 'gemini-2.5-flash'
   }
-  return {
-    providers: [
-      {
-        id: 'openai',
-        name: 'OpenAI',
-        baseUrl: 'https://api.openai.com/v1',
-        apiKey: '',
-        model: 'gpt-3.5-turbo'
-      },
-      {
-        id: 'cerebras',
-        name: 'Cerebras',
-        baseUrl: 'https://api.cerebras.ai/v1',
-        apiKey: '',
-        model: 'llama3.1-8b'
-      }
-    ]
-  };
-}
+];
 
-// Save providers to file
-function saveProviders(providers) {
-  fs.writeFileSync(PROVIDERS_FILE, JSON.stringify(providers, null, 2));
-}
-
-// API Routes
+// Simple API to get providers (no auth needed)
 app.get('/api/providers', (req, res) => {
-  res.json(loadProviders());
-});
-
-app.post('/api/providers', (req, res) => {
-  const { name, baseUrl, apiKey, model } = req.body;
-  
-  // Validation
-  if (!name || !baseUrl || !apiKey || !model) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
-  
-  // Validate URL format
-  try {
-    new URL(baseUrl);
-  } catch {
-    return res.status(400).json({ error: 'Invalid base URL format' });
-  }
-  
-  const providers = loadProviders();
-  const newProvider = {
-    id: Date.now().toString(),
-    name: name.trim(),
-    baseUrl: baseUrl.trim(),
-    apiKey: apiKey.trim(),
-    model: model.trim()
-  };
-  
-  providers.providers.push(newProvider);
-  saveProviders(providers);
-  res.json(newProvider);
-});
-
-app.put('/api/providers/:id', (req, res) => {
-  const { name, baseUrl, apiKey, model } = req.body;
-  const providers = loadProviders();
-  const index = providers.providers.findIndex(p => p.id === req.params.id);
-  
-  if (index === -1) {
-    return res.status(404).json({ error: 'Provider not found' });
-  }
-  
-  // Validation
-  if (!name || !baseUrl || !apiKey || !model) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
-  
-  // Validate URL format
-  try {
-    new URL(baseUrl);
-  } catch {
-    return res.status(400).json({ error: 'Invalid base URL format' });
-  }
-  
-  providers.providers[index] = {
-    ...providers.providers[index],
-    name: name.trim(),
-    baseUrl: baseUrl.trim(),
-    apiKey: apiKey.trim(),
-    model: model.trim()
-  };
-  
-  saveProviders(providers);
-  res.json(providers.providers[index]);
-});
-
-app.delete('/api/providers/:id', (req, res) => {
-  const providers = loadProviders();
-  providers.providers = providers.providers.filter(p => p.id !== req.params.id);
-  saveProviders(providers);
-  res.json({ success: true });
+  res.json({ providers: PROVIDERS });
 });
 
 // WebSocket handler for streaming LLM responses
@@ -150,24 +82,13 @@ wss.on('connection', (ws) => {
           return;
         }
         
-        const providers = loadProviders();
-        
-        const provider1 = providers.providers.find(p => p.id === provider1Id);
-        const provider2 = providers.providers.find(p => p.id === provider2Id);
+        const provider1 = PROVIDERS.find(p => p.id === provider1Id);
+        const provider2 = PROVIDERS.find(p => p.id === provider2Id);
         
         if (!provider1 || !provider2) {
           ws.send(JSON.stringify({
             type: 'ERROR',
             message: 'One or both providers not found'
-          }));
-          return;
-        }
-        
-        // Check if providers have API keys
-        if (!provider1.apiKey || !provider2.apiKey) {
-          ws.send(JSON.stringify({
-            type: 'ERROR',
-            message: 'One or both providers are missing API keys'
           }));
           return;
         }
@@ -228,7 +149,6 @@ async function streamResponse(ws, provider, prompt, providerKey, startTime) {
     console.log(`   Model: ${provider.model}`);
     console.log(`   Messages:`, JSON.stringify(requestPayload.messages, null, 2));
     console.log(`   Stream: ${requestPayload.stream}`);
-    console.log(`   Full Payload:`, JSON.stringify(requestPayload, null, 2));
     console.log('');
     
     const stream = await openai.chat.completions.create(requestPayload);
@@ -331,10 +251,11 @@ async function streamResponse(ws, provider, prompt, providerKey, startTime) {
 
 // Serve the frontend
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, 'dist-simple', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Simple LLM Comparison Server running on port ${PORT}`);
+  console.log(`Available providers: ${PROVIDERS.map(p => p.name).join(', ')}`);
 });
